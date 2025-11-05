@@ -221,7 +221,7 @@
       let maxBallSpeed = 5;
       
       
-      // ▼▼▼ 難易度別の迷路データ ▼▼▼
+      // 難易度別の迷路データ
       // (16x16)
       const mazeEasy = [
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -245,7 +245,7 @@
       const startEasy = { i: 1, j: 1 };
       const goalEasy  = { i: 14, j: 14 };
 
-      // (普通: 6個)
+      // 普通
       const mazeMedium = [
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
         [1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
@@ -273,19 +273,19 @@
         [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0], // (5,8)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0], // (8,6)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0], // (9,1), (9,6)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0], // (10,10)
         [0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // (11,4)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0], // (13,8)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0], // (13,9)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       ];
       const startMedium = { i: 1, j: 1 };
       const goalMedium  = { i: 14, j: 14 };
 
-      // (難しい: 13個)
+      //難しい
       const mazeHard = mazeMedium; // 迷路は同じ
       const trapHard = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -294,14 +294,14 @@
         [0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // (3,5)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 0, 0, 0], // (5,5)(5,8)(5,10)
+        [0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0], // (6,1)(6,14)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2, 0, 0, 0], // (8,6)(8,12)
+        [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0], // (9,8)
+        [0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0], // (10,2)(10,10)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0], // (8,6)
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 0, 0], // (10,10)(10,12)
-        [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0], // (11,8)
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 0, 0, 2, 0, 0], // (13,3)(13,6)(13,8)(13,13)
+        [0, 0, 0, 2, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0], // (13,3)(13,9)(13,13)
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       ];
@@ -309,7 +309,7 @@
       const goalHard  = { i: 14, j: 14 };
       
 
-      // ▼▼▼ 表示・UI関連の関数 ▼▼▼
+      // 表示・UI関連の関数
 
       function showTemporaryText(message, color, fontSize = "5rem", duration = 2000) {
         const text = document.getElementById("centerText");
@@ -384,7 +384,7 @@
         }, 3000);
       }
 
-      // ▼▼▼ BGM再生・停止関数 ▼▼▼
+      // BGM再生・停止関数
       
       function playMusic(bgmTrack) {
         if (!isMusicOn || !bgmTrack) return;
@@ -428,7 +428,7 @@
       }
       document.querySelector("#myid").innerHTML = myid;
 
-      // ▼▼▼ メニューボタンのイベントリスナー ▼▼▼
+      // メニューボタンのイベントリスナー
       let startBtn = document.querySelector("#startButton");
       let showRankingBtn = document.querySelector("#showRankingButton");
       let backToMenuBtn = document.querySelector("#backToMenuButton");
@@ -488,13 +488,13 @@
         }
       }
 
-      // ▼▼▼ ソケット通信 ▼▼▼
+      // ソケット通信
       socket.on("sensor", function (data) {
         g = parseFloat(data.g);
         b = parseFloat(data.b);
       });
 
-      // ▼▼▼ ゲームロジック関数 ▼▼▼
+      // ゲームロジック関数
 
       // 難易度設定の読み込みとリセット
       function resetGame() {
@@ -563,24 +563,22 @@
         return trap[i][j] === 2;
       }
 
-      // ▼▼▼ p5.js 標準関数 ▼▼▼
+      //p5.js
 
       function preload() {
         soundFormats('mp3');
         bgmEasy   = loadSound('maou_bgm_cyber13.mp3');
         bgmMedium = loadSound('MusMus-BGM-125.mp3');
-        bgmHard   = loadSound('maou_bgm_cyber37');
+        bgmHard   = loadSound('maou_bgm_cyber37.mp3');
         seFall    = loadSound('fall02.mp3');
-        
-      
       }
       
       function setup() {
         createCanvas(windowWidth, windowHeight, WEBGL);
         camera(0, 0, 1000, 0, 0, 0, 0, 1, 0);
-        // noStroke(); // setupからは削除済み
+        // noStroke(); // 削除済み
         
-        getAudioContext().suspend(); // 自動再生ポリシー対策
+        getAudioContext().suspend();
 
         resetGame(); // 初回リセット
         
@@ -591,46 +589,34 @@
         resizeCanvas(windowWidth, windowHeight);
       }
 
-      // ★★★ メインの描画ループ ★★★
+      //メインの描画ルー
       function draw() {
-        // ★ 変更点：背景を黒に戻す
         background(0); 
-        // 旧: 背景画像
-        // push();
-        // noStroke();
-        // texture(bgImage);
-        // plane(width * 2, height * 2); 
-        // pop();
-
         orbitControl();
 
         const maxTilt = 20;
         b = constrain(b, -maxTilt, maxTilt);
         g = constrain(g, -maxTilt, maxTilt);
 
-        // ▼▼▼ 変更点：光源をお手本に合わせる (環境光を少し調整) ▼▼▼
-        ambientLight(76, 67, 135); // 全体を少し明るめの青紫に (以前: 40,30,60)
+        // 光源
+        ambientLight(76, 67, 135);
         directionalLight(89, 75, 153, 1, 1, 0);
         pointLight(100, 200, 255, -400, -400, 200); 
-        // 右下からの赤/マゼンタライト
         pointLight(255, 0, 50, 400, 400, 200);
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-        push(); // ボードとボールの世界
+        push();
         rotateX((-PI * b) / 180);
         rotateY((PI * g) / 180);
         
         wallCenterZ = boardTopZ + (wallHeight / 2);
-
-        // ★ 全体のnoStroke()はここで設定しない
         
         // 床や壁の描画
         for (let i = 0; i < maze.length; i++) {
           for (let j = 0; j < maze[i].length; j++) {
             if (maze[i][j] === 1) { // 壁
               push();
-              noStroke(); // ★ 壁には線なし
-              specularMaterial(90, 160, 200); // お手本の暗い青に
+              noStroke(); // 壁には線なし
+              specularMaterial(90, 160, 200);
               shininess(50);
               translate(j * wallSize - offsetX + wallSize / 2, i * wallSize - offsetY + wallSize / 2, wallCenterZ);
               box(wallSize, wallSize, wallHeight);
@@ -638,20 +624,18 @@
             }
             else if (trap[i][j] === 2) { // 落とし穴
               push();
-
-              stroke(0, 255, 0); 
-              strokeWeight(3);    // フチの太さ (見やすいように少し太く)
-              ambientMaterial(0, 0, 0); // 真っ黒
+              stroke(0, 255, 0); // 緑の線
+              strokeWeight(3);
+              ambientMaterial(0, 0, 0);
               translate(j * wallSize - offsetX + wallSize / 2, i * wallSize - offsetY + wallSize / 2, boardTopZ);
               box(wallSize, wallSize, 30);
               pop();
             }
-            else if (maze[i][j] === 0) { // 通路 (床)
+            else if (maze[i][j] === 0) { // 通路
               push();
-              // ▼▼▼ ★ 変更点：床にstrokeを追加 ▼▼▼
-              stroke(50, 80, 200); // 青みがかった線
-              strokeWeight(1.5);    // 線の太さ
-              specularMaterial(40, 30, 80); // 暗い青紫
+              stroke(50, 80, 200);
+              strokeWeight(1.5);
+              specularMaterial(40, 30, 80);
               shininess(20);
               translate(j * wallSize - offsetX + wallSize / 2, i * wallSize - offsetY + wallSize / 2, boardTopZ);
               box(wallSize, wallSize, 30);
@@ -660,8 +644,7 @@
           }
         }
         
-        // ★ スタート、ゴール、ボールには線をつけない
-        noStroke(); 
+        noStroke(); // スタート、ゴール、ボールには線をつけない
         
         // スタート
         push();
@@ -710,17 +693,17 @@
 
         // ボールの描画
         translate(x, y, boardTopZ + r); 
-        specularMaterial(255, 255, 255); // シアンの光沢
+        specularMaterial(255, 255, 255); // シルバー
         shininess(100);
         sphere(r);
         pop(); // ボールのpop()
         
-        pop(); // ボードとボールの世界のpop()
+        pop(); // ボードとボールのpop()
         
         
-        // ▼▼▼ 判定ロジック (変更なし) ▼▼▼
+        // 判定ロジック (回転の外側)
 
-        // 🟢 ゴール判定
+        // ゴール判定
         let goalX = goalJ * wallSize - offsetX + wallSize / 2;
         let goalY = goalI * wallSize - offsetY + wallSize / 2;
         let dToGoal = dist(x, y, goalX, goalY);
@@ -751,7 +734,7 @@
           }, 3500);
         }
 
-        // 🕳️ 落とし穴判定
+        // 落とし穴判定
         if (!goalReached && canControl && !trapFallen && isTrap(x, y)) {
           trapFallen = true;
           canControl = false;
@@ -760,7 +743,7 @@
         }
       }
       
-      // ▼▼▼ スコアとランキングの関数群 ▼▼▼
+      //スコアとランキングの関数群
       
       function formatTime(timeInSeconds, precision = 3) {
         let minutes = Math.floor(timeInSeconds / 60);
