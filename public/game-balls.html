@@ -23,6 +23,32 @@
       let b = 0;
       let g = 0;
 
+       //迷路の経路図
+      let maze = [
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,1,0,1,0,0,0,1,0,0,0,0,1],
+        [1,0,1,0,1,0,1,0,1,0,1,1,1,1,0,1],
+        [1,0,1,0,0,0,1,0,1,0,0,0,0,1,0,1],
+        [1,0,1,1,1,1,1,0,1,1,1,1,0,1,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1],
+        [1,1,1,0,1,1,1,0,1,1,0,1,0,1,0,1],
+        [1,0,1,0,1,0,0,0,0,1,0,1,0,1,0,1],
+        [1,0,1,0,1,0,0,0,0,1,0,1,0,1,0,1],
+        [1,0,1,0,0,0,0,1,0,1,0,0,0,1,0,1],
+        [1,0,1,1,1,1,0,1,0,1,1,1,0,1,0,1],
+        [1,0,0,0,0,0,0,1,0,0,0,0,0,1,0,1],
+        [1,0,1,1,1,1,1,1,1,1,1,1,0,1,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1],
+        [1,1,1,1,1,1,1,1,1,1,0,1,1,1,0,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+      ];
+
+      let wallSize = 50;//壁１マスのサイズ
+      let wallHeight = 80;//高さ
+
+      let offsetX = 0;
+      let offsetY = 0;
+
       let myid = sessionStorage.getItem('clientId');
       if (!myid) {
         myid = Math.random().toString(36).substring(2, 15);
@@ -45,22 +71,61 @@
 
       let x = 0;
       let y = 0;
-      let r = 40;
-      let speed = 0.1;
+      let r = 20;
+      let vx = 0;
+      let vy = 0;
+      let i = 0;
+      let j = 0;
+      let speed = 0.3;
       let cat;
+      let boardTopZ = 15;
+      let wallCenterZ = 0;
+      let canMoveX = true;
+      let canMoveY = true;
+       
+
+      /**
+       * 指定した座標が壁にめり込んでいるかを判定する
+       * @param {number} x - ボールのX座標
+       * @param {number} y - ボールのY座標
+       * @returns {boolean} - 壁に接触していれば true
+       */
+      function isWall(x, y) {
+        let i = Math.floor((y + offsetY) / wallSize);
+        let j = Math.floor((x + offsetX) / wallSize);
+
+        if (i < 0 || i >= maze.length || j < 0 || j >= maze[0].length) {
+          return true;
+        }
+        return maze[i][j] === 1;
+      }
+
+
+
 
       function setup() {
         createCanvas(800, 800, WEBGL);
-        camera(0, 800, 100, 0, 0, 0, 0, 1, 0);
+        camera(0, 1000, 1500, 0, 0, 0, 0, 1, 0);
         noStroke();
+
+        offsetX = (maze[0].length / 2) * wallSize;
+        offsetY = (maze.length / 2) * wallSize;
       }
 
       function draw() {
         background(0);
-        orbitControl();
-        ambientLight(50, 50, 50);
-        directionalLight(100, 20, 20, -1, -1, -1);
-        pointLight(20, 20, 100, 0, 0, 800);
+        orbitControl();//マウスドラッグで3D空間の視点を動かせる
+
+        //傾き制限
+        const maxTilt = 20; // 最大傾き角度
+        b = constrain(b, -maxTilt, maxTilt);
+        g = constrain(g, -maxTilt, maxTilt);
+
+
+        // 空間の光
+        ambientLight(50, 50, 50);//環境光
+        directionalLight(100, 20, 20, -1, -1, -1);//指向性光
+        pointLight(20, 20, 100, 0, 0, 800);//点光源
 
         // 板の動き
         push();
@@ -68,12 +133,64 @@
         rotateY((PI * g) / 180);
         translate(0, 0, -50);
         box(800, 800, 30);
+
+      
+      
+        //z座標は壁の上面＋原点からの高さ（半分）
+        wallCenterZ = boardTopZ + (wallHeight / 2);
+
+      for(let i = 0; i < maze.length; i++){
+        for(let j = 0; j < maze[i].length; j++){
+
+          if(maze[i][j] === 1){
+            push();
+
+            translate(j * wallSize - offsetX + wallSize / 2, i * wallSize - offsetY + wallSize / 2, wallCenterZ);
+
+            box(wallSize, wallSize, wallHeight);
+            pop();
+          }
+        }
+      }
         pop();
+
+      
+
 
         // ボールの動き
         push();
-        x = x + speed * g;
-        y = y + speed * b;
+
+        //傾きに基づく目標速度
+        vx = speed * g;
+        vy = speed * b;
+
+        //次の移動先の座標を計算
+        let nextX = x + speed * vx;
+        let nextY = y + speed * vy;
+
+        // 壁との最小距離（半径より少し小さくして埋まり防止）
+        let margin = r;
+
+        // X方向（横の衝突判定）
+        if (vx > 0 && isWall(nextX + margin, y)) {
+          vx = 0; // 壁にぶつかったので止める（押し戻さない）
+        } else if (vx < 0 && isWall(nextX - margin, y)) {
+          vx = 0;
+        }
+
+        
+        // Y方向（縦の衝突判定）
+        if (vy > 0 && isWall(x, nextY + margin)) {
+          vy = 0;
+        } else if (vy < 0 && isWall(x, nextY - margin)) {
+          vy = 0;
+        }
+        
+
+        x += vx;
+        y += vy;
+
+
 
         // ボールの高さを板の傾きに合わせて高さを変える
         translate(x, y, -x * sin((PI * g) / 180) - y * sin((PI * b) / 180));
@@ -81,6 +198,9 @@
 
         specularMaterial(200);
         sphere(r);
+
+
+        //画面端判定
         if (x > width / 2) x = width / 2;
         if (y > width / 2) y = width / 2;
         if (x < -width / 2) x = -width / 2;
