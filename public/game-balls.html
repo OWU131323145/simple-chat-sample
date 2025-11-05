@@ -7,206 +7,817 @@
     <title>センサからの信号受信</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.3/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/addons/p5.sound.min.js"></script>
+    <style>
+      body { margin: 0; overflow: hidden; }
+      canvas { display: block; }
+
+      #centerText {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 5rem;
+        font-weight: bold;
+        color: white;
+        text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.6);
+        z-index: 10;
+        display: none;
+        opacity: 0;
+        animation: fade 1s ease-in-out;
+        pointer-events: none;
+      }
+
+      @keyframes fade {
+        0% { opacity: 0; }
+        20% { opacity: 1; }
+        80% { opacity: 1; }
+        100% { opacity: 0; }
+      }
+
+      .overlayContainer {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(20, 20, 40, 0.9);
+        color: white;
+        padding: 30px 40px;
+        border-radius: 10px;
+        text-align: center;
+        font-family: sans-serif;
+        z-index: 20;
+        border: 1px solid #555;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        width: 80%;
+        max-width: 450px;
+        box-sizing: border-box;
+      }
+      .overlayContainer h2 {
+        margin-top: 0;
+        color: #00ff99;
+      }
+      .overlayContainer button {
+        font-size: 1.1rem;
+        padding: 10px 15px;
+        cursor: pointer;
+        background-color: #00ff99;
+        border: none;
+        color: #111;
+        font-weight: bold;
+        border-radius: 5px;
+        transition: background-color 0.2s;
+        margin: 5px;
+      }
+      .overlayContainer button:hover {
+        background-color: #8affd1;
+      }
+      .overlayContainer hr {
+        margin: 20px 0;
+        border: 0;
+        border-top: 1px solid #444;
+      }
+      
+      #difficultyButtons {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 15px;
+      }
+      #difficultyButtons button {
+        background-color: #444;
+        color: #fff;
+      }
+      #difficultyButtons button.selected {
+        background-color: #00ff99;
+        color: #111;
+        box-shadow: 0 0 10px #00ff99;
+      }
+      
+      #rankingContainer {
+        display: none;
+        text-align: left;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+      #rankingList { list-style: none; padding: 0; margin: 0; }
+      #rankingList li {
+        background: rgba(255, 255, 255, 0.05);
+        margin-bottom: 8px;
+        padding: 10px;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      #rankingList .rank-time { font-size: 1.2rem; font-weight: bold; color: #00ff99; margin-right: 15px; }
+      #rankingList .rank-name { flex-grow: 1; font-size: 1.1rem; word-break: break-all; }
+      #rankingList .rank-date { width: 100%; font-size: 0.8rem; color: #bbb; text-align: right; margin-top: 5px; }
+      #rankingContainer .button-wrap { text-align: center; margin-top: 20px; }
+      
+      #timerDisplay {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: white;
+        font-family: monospace;
+        text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
+        z-index: 5;
+        display: none;
+      }
+
+      #toggleMusicButton {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 30;
+        background-color: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        font-size: 0.9rem;
+        padding: 5px 10px;
+        margin: 0;
+        font-weight: normal;
+        box-shadow: none;
+      }
+      #toggleMusicButton:hover {
+        background-color: rgba(255, 255, 255, 0.4);
+      }
+      #toggleMusicButton.sound-off {
+         background-color: rgba(0, 0, 0, 0.3);
+         color: #888;
+         border-color: #555;
+      }
+
+    </style>
   </head>
 
   <body>
-    <h1>スマホからのセンサ情報を受信</h1>
-    <div>
+
+    <button id="toggleMusicButton">♪ ON</button>
+    <div id="menuContainer" class="overlayContainer">
+      <h2>3D迷路ゲーム</h2>
+      <p>スマホを傾けてボールをゴールまで導こう！</p>
+      
+      <div id="difficultyButtons">
+        <button id="diff-easy">簡単</button>
+        <button id="diff-medium" class="selected">普通</button>
+        <button id="diff-hard">難しい</button>
+      </div>
+
+      <button id="startButton">ゲームスタート</button>
+      <button id="showRankingButton">ランキング</button>
+      <hr />
       <div>あなたのID: <span id="myid"></span></div>
-      <button id="connect">ルームに入る</button>
-      <div>受信した情報はコンソールログで確認してください</div>
     </div>
+    
+    <div id="rankingContainer" class="overlayContainer">
+      <h2>ランキング (<span id="rankingDifficulty"></span>)</h2>
+      <ol id="rankingList"></ol>
+      <div class="button-wrap">
+        <button id="backToMenuButton">メニューに戻る</button>
+      </div>
+    </div>
+
+    <div id="timerDisplay">00:00.0</div>
+
+    <div id="centerText"></div>
+
     <script>
       let socket = io.connect();
 
-      let btn = document.querySelector("#connect");
-      let b = 0;
-      let g = 0;
+      let b = 0, g = 0;
+      let canControl = false;
+      let goalReached = false;
+      let trapFallen = false;
 
-       //迷路の経路図
-      let maze = [
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,1,0,1,0,0,0,1,0,0,0,0,1],
-        [1,0,1,0,1,0,1,0,1,0,1,1,1,1,0,1],
-        [1,0,1,0,0,0,1,0,1,0,0,0,0,1,0,1],
-        [1,0,1,1,1,1,1,0,1,1,1,1,0,1,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1],
-        [1,1,1,0,1,1,1,0,1,1,0,1,0,1,0,1],
-        [1,0,1,0,1,0,0,0,0,1,0,1,0,1,0,1],
-        [1,0,1,0,1,0,0,0,0,1,0,1,0,1,0,1],
-        [1,0,1,0,0,0,0,1,0,1,0,0,0,1,0,1],
-        [1,0,1,1,1,1,0,1,0,1,1,1,0,1,0,1],
-        [1,0,0,0,0,0,0,1,0,0,0,0,0,1,0,1],
-        [1,0,1,1,1,1,1,1,1,1,1,1,0,1,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1],
-        [1,1,1,1,1,1,1,1,1,1,0,1,1,1,0,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+      let gameState = "menu";
+      let startTime = 0;
+      
+      // BGM/SE用
+      let bgmEasy, bgmMedium, bgmHard;
+      let seFall;
+      let currentBGM = null;
+      let isMusicOn = true;
+      
+      // ゲーム設定
+      let maze;
+      let trap;
+      let startI, startJ, goalI, goalJ;
+      let wallSize = 50, wallHeight = 80;
+      let offsetX = 0, offsetY = 0;
+      let x = 0, y = 0, r = 20;
+      let vx = 0, vy = 0;
+      let speed = 0.3;
+      let boardTopZ = 15, wallCenterZ = 0;
+      
+      let currentDifficulty = "medium";
+      let timeLimit = 0;
+      let gameTimer;
+      let friction = 0.95;
+      let maxBallSpeed = 5;
+      
+      
+      // ▼▼▼ 難易度別の迷路データ ▼▼▼
+      // (16x16)
+      const mazeEasy = [
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
+        [1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1],
+        [1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+        [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1],
+        [1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1],
+        [1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1],
+        [1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1],
+        [1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1],
+        [1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1],
+        [1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
       ];
+      const trapEasy = Array(16).fill(0).map(() => Array(16).fill(0));
+      const startEasy = { i: 1, j: 1 };
+      const goalEasy  = { i: 14, j: 14 };
 
-      let wallSize = 50;//壁１マスのサイズ
-      let wallHeight = 80;//高さ
+      // (普通: 6個)
+      const mazeMedium = [
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1],
+        [1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+        [1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1],
+        [1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
+        [1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1],
+        [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+      ];
+      const trapMedium = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // (3,5)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0], // (5,8)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0], // (8,6)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0], // (10,10)
+        [0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // (11,4)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0], // (13,8)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      ];
+      const startMedium = { i: 1, j: 1 };
+      const goalMedium  = { i: 14, j: 14 };
 
-      let offsetX = 0;
-      let offsetY = 0;
+      // (難しい: 13個)
+      const mazeHard = mazeMedium; // 迷路は同じ
+      const trapHard = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // (1,2)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // (3,5)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 0, 0, 0], // (5,5)(5,8)(5,10)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0], // (8,6)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 0, 0], // (10,10)(10,12)
+        [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0], // (11,8)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 2, 0, 0, 2, 0, 2, 0, 0, 0, 0, 2, 0, 0], // (13,3)(13,6)(13,8)(13,13)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      ];
+      const startHard = { i: 1, j: 1 };
+      const goalHard  = { i: 14, j: 14 };
+      
+
+      // ▼▼▼ 表示・UI関連の関数 ▼▼▼
+
+      function showTemporaryText(message, color, fontSize = "5rem", duration = 2000) {
+        const text = document.getElementById("centerText");
+        text.style.display = "block";
+        text.innerHTML = message;
+        text.style.color = color;
+        text.style.fontSize = fontSize;
+        text.style.animation = "none";
+        void text.offsetWidth;
+        text.style.animation = `fade ${duration / 1000}s ease-in-out`;
+        setTimeout(() => { text.style.display = "none"; }, duration);
+      }
+
+      function showGoal(timeString) {
+        clearInterval(gameTimer);
+        stopAllMusic();
+        showTemporaryText(`Goal! ${timeString}`, "yellow", "4rem", 3000);
+        canControl = false;
+      }
+
+      function showTrapMessage() {
+        if (isMusicOn && seFall) { seFall.play(); }
+        
+        showTemporaryText("Oh no! Trapped!", "orange", "3.5rem", 1500);
+        canControl = false;
+        setTimeout(() => {
+          canControl = true;
+          trapFallen = false;
+        }, 1500);
+      }
+      
+      function showGameOver() {
+        clearInterval(gameTimer);
+        stopAllMusic();
+        canControl = false;
+        gameState = "menu";
+        noLoop();
+        
+        showTemporaryText("Time Over!", "red", "4rem", 3000);
+        
+        setTimeout(() => {
+            document.querySelector("#menuContainer").style.display = "block";
+            document.querySelector("#timerDisplay").style.display = "none";
+            resetGame();
+        }, 3500);
+      }
+      
+      function showReadyGo() {
+        showTemporaryText("Ready...", "white");
+        canControl = false;
+        
+        setTimeout(() => {
+          showTemporaryText("Go!", "lime", "5rem", 1000);
+          startTime = millis();
+          
+          if (currentDifficulty === "easy") {
+            playMusic(bgmEasy);
+          } else if (currentDifficulty === "hard") {
+            playMusic(bgmHard);
+          } else {
+            playMusic(bgmMedium);
+          }
+
+          clearInterval(gameTimer);
+          gameTimer = setInterval(updateTimer, 100);
+          document.querySelector("#timerDisplay").style.display = "block";
+          
+        }, 2000);
+        
+        setTimeout(() => {
+          canControl = true;
+        }, 3000);
+      }
+
+      // ▼▼▼ BGM再生・停止関数 ▼▼▼
+      
+      function playMusic(bgmTrack) {
+        if (!isMusicOn || !bgmTrack) return;
+        stopAllMusic();
+        currentBGM = bgmTrack;
+        currentBGM.loop();
+        currentBGM.setVolume(0.5);
+      }
+
+      function stopAllMusic() {
+        if (bgmEasy && bgmEasy.isPlaying())   bgmEasy.stop();
+        if (bgmMedium && bgmMedium.isPlaying()) bgmMedium.stop();
+        if (bgmHard && bgmHard.isPlaying())   bgmHard.stop();
+        currentBGM = null;
+      }
+      
+      // タイマー更新関数
+      function updateTimer() {
+        let elapsedTime = (millis() - startTime) / 1000.0;
+        let timerEl = document.querySelector("#timerDisplay");
+        
+        if (timeLimit > 0) {
+          let remainingTime = timeLimit - elapsedTime;
+          if (remainingTime <= 0) {
+            remainingTime = 0;
+            timerEl.style.color = "red";
+            showGameOver();
+          } else if (remainingTime < 10) {
+            timerEl.style.color = "orange";
+          }
+          timerEl.innerHTML = formatTime(remainingTime, 1);
+        } else {
+          timerEl.innerHTML = formatTime(elapsedTime, 1);
+        }
+      }
 
       let myid = sessionStorage.getItem('clientId');
       if (!myid) {
         myid = Math.random().toString(36).substring(2, 15);
         sessionStorage.setItem('clientId', myid);
       }
-      
       document.querySelector("#myid").innerHTML = myid;
-      console.log("あなたのID: ", myid);
 
-      btn.addEventListener("click", function () {
+      // ▼▼▼ メニューボタンのイベントリスナー ▼▼▼
+      let startBtn = document.querySelector("#startButton");
+      let showRankingBtn = document.querySelector("#showRankingButton");
+      let backToMenuBtn = document.querySelector("#backToMenuButton");
+      let menuContainer = document.querySelector("#menuContainer");
+      let rankingContainer = document.querySelector("#rankingContainer");
+      let diffButtons = document.querySelectorAll("#difficultyButtons button");
+      let musicBtn = document.querySelector("#toggleMusicButton");
+
+      startBtn.addEventListener("click", function () {
+        userStartAudio();
+        resetGame();
         socket.emit("join", "game");
-        btn.remove();
+        menuContainer.style.display = "none";
+        showReadyGo(); 
+        gameState = "playing";
+        loop();
       });
-    
+      
+      showRankingBtn.addEventListener("click", function () {
+        userStartAudio();
+        menuContainer.style.display = "none";
+        displayRanking();
+        rankingContainer.style.display = "block";
+      });
+      
+      backToMenuBtn.addEventListener("click", function () {
+        rankingContainer.style.display = "none";
+        menuContainer.style.display = "block";
+      });
+      
+      diffButtons.forEach(button => {
+        button.addEventListener("click", () => {
+          userStartAudio();
+          diffButtons.forEach(btn => btn.classList.remove("selected"));
+          button.classList.add("selected");
+          currentDifficulty = button.id.split('-')[1];
+        });
+      });
+      
+      musicBtn.addEventListener("click", () => {
+        userStartAudio();
+        isMusicOn = !isMusicOn;
+        if (isMusicOn) {
+          musicBtn.textContent = "♪ ON";
+          musicBtn.classList.remove("sound-off");
+          playMusic(bgmEasy);
+        } else {
+          musicBtn.textContent = "♪ OFF";
+          musicBtn.classList.add("sound-off");
+          stopAllMusic();
+        }
+      });
+      
+      function userStartAudio() {
+        if (getAudioContext().state !== 'running') {
+          getAudioContext().resume();
+        }
+      }
+
+      // ▼▼▼ ソケット通信 ▼▼▼
       socket.on("sensor", function (data) {
         g = parseFloat(data.g);
         b = parseFloat(data.b);
-        console.log(data);
       });
 
-      let x = 0;
-      let y = 0;
-      let r = 20;
-      let vx = 0;
-      let vy = 0;
-      let i = 0;
-      let j = 0;
-      let speed = 0.3;
-      let cat;
-      let boardTopZ = 15;
-      let wallCenterZ = 0;
-      let canMoveX = true;
-      let canMoveY = true;
-       
+      // ▼▼▼ ゲームロジック関数 ▼▼▼
 
-      /**
-       * 指定した座標が壁にめり込んでいるかを判定する
-       * @param {number} x - ボールのX座標
-       * @param {number} y - ボールのY座標
-       * @returns {boolean} - 壁に接触していれば true
-       */
-      function isWall(x, y) {
-        let i = Math.floor((y + offsetY) / wallSize);
-        let j = Math.floor((x + offsetX) / wallSize);
+      // 難易度設定の読み込みとリセット
+      function resetGame() {
+        clearInterval(gameTimer);
+        document.querySelector("#timerDisplay").style.display = "none";
+        document.querySelector("#timerDisplay").style.color = "white";
 
-        if (i < 0 || i >= maze.length || j < 0 || j >= maze[0].length) {
-          return true;
+        if (currentDifficulty === "easy") {
+          maze = mazeEasy;
+          trap = trapEasy;
+          startI = startEasy.i; startJ = startEasy.j;
+          goalI = goalEasy.i;   goalJ = goalEasy.j;
+          timeLimit = 0;
+          friction = 0.95; 
+          maxBallSpeed = 5; 
+        } else if (currentDifficulty === "hard") {
+          maze = mazeHard;
+          trap = trapHard;
+          startI = startHard.i; startJ = startHard.j;
+          goalI = goalHard.i;   goalJ = goalHard.j;
+          timeLimit = 35; 
+          friction = 0.995;
+          maxBallSpeed = 7; 
+        } else { // Medium (default)
+          maze = mazeMedium;
+          trap = trapMedium;
+          startI = startMedium.i; startJ = startMedium.j;
+          goalI = goalMedium.i;   goalJ = goalMedium.j;
+          timeLimit = 50;
+          friction = 0.955;
+          maxBallSpeed = 6; 
         }
-        return maze[i][j] === 1;
-      }
-
-
-
-
-      function setup() {
-        createCanvas(800, 800, WEBGL);
-        camera(0, 1000, 1500, 0, 0, 0, 0, 1, 0);
-        noStroke();
+        
+        let timerEl = document.querySelector("#timerDisplay");
+        if (timeLimit > 0) {
+          timerEl.innerHTML = formatTime(timeLimit, 1);
+        } else {
+          timerEl.innerHTML = "00:00.0";
+        }
 
         offsetX = (maze[0].length / 2) * wallSize;
-        offsetY = (maze.length / 2) * wallSize;
+        offsetY = (maze[0].length / 2) * wallSize;
+        
+        resetBallToStart();
       }
 
-      function draw() {
-        background(0);
-        orbitControl();//マウスドラッグで3D空間の視点を動かせる
+      function resetBallToStart() {
+        x = startJ * wallSize - offsetX + wallSize / 2;
+        y = startI * wallSize - offsetY + wallSize / 2;
+        vx = 0;
+        vy = 0;
+        goalReached = false;
+        trapFallen = false;
+      }
 
-        //傾き制限
-        const maxTilt = 20; // 最大傾き角度
+      function isWall(checkX, checkY) {
+        let i = Math.floor((checkY + offsetY) / wallSize);
+        let j = Math.floor((checkX + offsetX) / wallSize);
+        if (i < 0 || i >= maze.length || j < 0 || j >= maze[0].length) { return true; }
+        return maze[i][j] === 1;
+      }
+      function isTrap(checkX, checkY) {
+        let i = Math.floor((checkY + offsetY) / wallSize);
+        let j = Math.floor((checkX + offsetX) / wallSize);
+        if (i < 0 || i >= trap.length || j < 0 || j >= trap[0].length) { return false; }
+        return trap[i][j] === 2;
+      }
+
+      // ▼▼▼ p5.js 標準関数 ▼▼▼
+
+      function preload() {
+        soundFormats('mp3');
+        bgmEasy   = loadSound('maou_bgm_cyber13.mp3');
+        bgmMedium = loadSound('MusMus-BGM-125.mp3');
+        bgmHard   = loadSound('maou_bgm_cyber37');
+        seFall    = loadSound('fall02.mp3');
+        
+      
+      }
+      
+      function setup() {
+        createCanvas(windowWidth, windowHeight, WEBGL);
+        camera(0, 0, 1000, 0, 0, 0, 0, 1, 0);
+        // noStroke(); // setupからは削除済み
+        
+        getAudioContext().suspend(); // 自動再生ポリシー対策
+
+        resetGame(); // 初回リセット
+        
+        noLoop(); // メニューから開始
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
+
+      // ★★★ メインの描画ループ ★★★
+      function draw() {
+        // ★ 変更点：背景を黒に戻す
+        background(0); 
+        // 旧: 背景画像
+        // push();
+        // noStroke();
+        // texture(bgImage);
+        // plane(width * 2, height * 2); 
+        // pop();
+
+        orbitControl();
+
+        const maxTilt = 20;
         b = constrain(b, -maxTilt, maxTilt);
         g = constrain(g, -maxTilt, maxTilt);
 
+        // ▼▼▼ 変更点：光源をお手本に合わせる (環境光を少し調整) ▼▼▼
+        ambientLight(76, 67, 135); // 全体を少し明るめの青紫に (以前: 40,30,60)
+        directionalLight(89, 75, 153, 1, 1, 0);
+        pointLight(100, 200, 255, -400, -400, 200); 
+        // 右下からの赤/マゼンタライト
+        pointLight(255, 0, 50, 400, 400, 200);
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-        // 空間の光
-        ambientLight(50, 50, 50);//環境光
-        directionalLight(100, 20, 20, -1, -1, -1);//指向性光
-        pointLight(20, 20, 100, 0, 0, 800);//点光源
-
-        // 板の動き
-        push();
+        push(); // ボードとボールの世界
         rotateX((-PI * b) / 180);
         rotateY((PI * g) / 180);
-        translate(0, 0, -50);
-        box(800, 800, 30);
-
-      
-      
-        //z座標は壁の上面＋原点からの高さ（半分）
+        
         wallCenterZ = boardTopZ + (wallHeight / 2);
 
-      for(let i = 0; i < maze.length; i++){
-        for(let j = 0; j < maze[i].length; j++){
+        // ★ 全体のnoStroke()はここで設定しない
+        
+        // 床や壁の描画
+        for (let i = 0; i < maze.length; i++) {
+          for (let j = 0; j < maze[i].length; j++) {
+            if (maze[i][j] === 1) { // 壁
+              push();
+              noStroke(); // ★ 壁には線なし
+              specularMaterial(90, 160, 200); // お手本の暗い青に
+              shininess(50);
+              translate(j * wallSize - offsetX + wallSize / 2, i * wallSize - offsetY + wallSize / 2, wallCenterZ);
+              box(wallSize, wallSize, wallHeight);
+              pop();
+            }
+            else if (trap[i][j] === 2) { // 落とし穴
+              push();
 
-          if(maze[i][j] === 1){
-            push();
-
-            translate(j * wallSize - offsetX + wallSize / 2, i * wallSize - offsetY + wallSize / 2, wallCenterZ);
-
-            box(wallSize, wallSize, wallHeight);
-            pop();
+              stroke(0, 255, 0); 
+              strokeWeight(3);    // フチの太さ (見やすいように少し太く)
+              ambientMaterial(0, 0, 0); // 真っ黒
+              translate(j * wallSize - offsetX + wallSize / 2, i * wallSize - offsetY + wallSize / 2, boardTopZ);
+              box(wallSize, wallSize, 30);
+              pop();
+            }
+            else if (maze[i][j] === 0) { // 通路 (床)
+              push();
+              // ▼▼▼ ★ 変更点：床にstrokeを追加 ▼▼▼
+              stroke(50, 80, 200); // 青みがかった線
+              strokeWeight(1.5);    // 線の太さ
+              specularMaterial(40, 30, 80); // 暗い青紫
+              shininess(20);
+              translate(j * wallSize - offsetX + wallSize / 2, i * wallSize - offsetY + wallSize / 2, boardTopZ);
+              box(wallSize, wallSize, 30);
+              pop();
+            }
           }
         }
-      }
+        
+        // ★ スタート、ゴール、ボールには線をつけない
+        noStroke(); 
+        
+        // スタート
+        push();
+        emissiveMaterial(255, 0, 0); // 光る赤
+        translate(startJ * wallSize - offsetX + wallSize / 2, startI * wallSize - offsetY + wallSize / 2, boardTopZ);
+        box(wallSize, wallSize, 30);
         pop();
-
-      
-
-
+        // ゴール
+        push();
+        emissiveMaterial(0, 255, 0); // 光る緑
+        translate(goalJ * wallSize - offsetX + wallSize / 2, goalI * wallSize - offsetY + wallSize / 2, boardTopZ);
+        box(wallSize, wallSize, 30);
+        pop();
+        
+        
         // ボールの動き
         push();
-
-        //傾きに基づく目標速度
-        vx = speed * g;
-        vy = speed * b;
-
-        //次の移動先の座標を計算
-        let nextX = x + speed * vx;
-        let nextY = y + speed * vy;
-
-        // 壁との最小距離（半径より少し小さくして埋まり防止）
-        let margin = r;
-
-        // X方向（横の衝突判定）
-        if (vx > 0 && isWall(nextX + margin, y)) {
-          vx = 0; // 壁にぶつかったので止める（押し戻さない）
-        } else if (vx < 0 && isWall(nextX - margin, y)) {
+        if (canControl) {
+          vx += speed * g * 0.1;
+          vy += speed * b * 0.1;
+          vx *= friction; 
+          vy *= friction;
+          vx = constrain(vx, -maxBallSpeed, maxBallSpeed);
+          vy = constrain(vy, -maxBallSpeed, maxBallSpeed);
+        } else {
           vx = 0;
-        }
-
-        
-        // Y方向（縦の衝突判定）
-        if (vy > 0 && isWall(x, nextY + margin)) {
-          vy = 0;
-        } else if (vy < 0 && isWall(x, nextY - margin)) {
           vy = 0;
         }
-        
 
-        x += vx;
-        y += vy;
+        let nextX = x + vx;
+        let nextY = y + vy;
 
+        // 衝突判定
+        if (vx > 0) {
+          if (isWall(nextX + r, y)) { vx *= -0.5; nextX = x; }
+        } else if (vx < 0) {
+          if (isWall(nextX - r, y)) { vx *= -0.5; nextX = x; }
+        }
+        x = nextX;
+        if (vy > 0) {
+          if (isWall(x, nextY + r)) { vy *= -0.5; nextY = y; }
+        } else if (vy < 0) {
+          if (isWall(x, nextY - r)) { vy *= -0.5; nextY = y; }
+        }
+        y = nextY;
 
-
-        // ボールの高さを板の傾きに合わせて高さを変える
-        translate(x, y, -x * sin((PI * g) / 180) - y * sin((PI * b) / 180));
-        //translate(x, y, 0); // 高さを変えない場合
-
-        specularMaterial(200);
+        // ボールの描画
+        translate(x, y, boardTopZ + r); 
+        specularMaterial(255, 255, 255); // シアンの光沢
+        shininess(100);
         sphere(r);
+        pop(); // ボールのpop()
+        
+        pop(); // ボードとボールの世界のpop()
+        
+        
+        // ▼▼▼ 判定ロジック (変更なし) ▼▼▼
 
+        // 🟢 ゴール判定
+        let goalX = goalJ * wallSize - offsetX + wallSize / 2;
+        let goalY = goalI * wallSize - offsetY + wallSize / 2;
+        let dToGoal = dist(x, y, goalX, goalY);
+        
+        if (dToGoal < r + wallSize / 2 && !goalReached) {
+          goalReached = true;
+          canControl = false;
+          gameState = "goal";
+          noLoop(); 
+          let endTime = millis();
+          let elapsedTime = (endTime - startTime) / 1000.0;
+          let timeString = formatTime(elapsedTime, 3);
+          
+          showGoal(timeString);
+          
+          setTimeout(() => {
+            let playerName = prompt("ゴール！ タイム: " + timeString + "\n名前を入力してください:", "PLAYER");
+            if (playerName) {
+              let currentDate = new Date().toLocaleDateString();
+              if (timeLimit == 0 || elapsedTime < timeLimit) {
+                 saveScore(playerName, elapsedTime, currentDate, currentDifficulty);
+              }
+            }
+            menuContainer.style.display = "block";
+            document.querySelector("#timerDisplay").style.display = "none";
+            gameState = "menu";
+            resetGame();
+          }, 3500);
+        }
 
-        //画面端判定
-        if (x > width / 2) x = width / 2;
-        if (y > width / 2) y = width / 2;
-        if (x < -width / 2) x = -width / 2;
-        if (y < -width / 2) y = -width / 2;
-        pop();
+        // 🕳️ 落とし穴判定
+        if (!goalReached && canControl && !trapFallen && isTrap(x, y)) {
+          trapFallen = true;
+          canControl = false;
+          showTrapMessage();
+          resetBallToStart();
+        }
       }
+      
+      // ▼▼▼ スコアとランキングの関数群 ▼▼▼
+      
+      function formatTime(timeInSeconds, precision = 3) {
+        let minutes = Math.floor(timeInSeconds / 60);
+        let seconds = timeInSeconds % 60;
+        let minStr = minutes.toString().padStart(2, '0');
+        let padLength = (precision > 0) ? 3 + precision : 2;
+        let secStr = seconds.toFixed(precision).padStart(padLength, '0');
+        return `${minStr}:${secStr}`;
+      }
+
+      function getScores(difficulty) {
+        let key = "mazeGameScores_" + difficulty;
+        let scoresJSON = localStorage.getItem(key);
+        if (scoresJSON) {
+          return JSON.parse(scoresJSON);
+        } else {
+          return [];
+        }
+      }
+
+      function saveScore(name, time, date, difficulty) {
+        let scores = getScores(difficulty);
+        scores.push({ name: name, time: time, date: date });
+        scores.sort((a, b) => a.time - b.time);
+        let key = "mazeGameScores_" + difficulty;
+        localStorage.setItem(key, JSON.stringify(scores));
+      }
+
+      function displayRanking() {
+        document.querySelector("#rankingDifficulty").textContent = currentDifficulty;
+        let scores = getScores(currentDifficulty);
+        let rankingList = document.querySelector("#rankingList");
+        rankingList.innerHTML = "";
+        
+        if (scores.length === 0) {
+          rankingList.innerHTML = "<li>まだ記録がありません</li>";
+          return;
+        }
+        let topScores = scores.slice(0, 10);
+        
+        topScores.forEach((score, index) => {
+          let li = document.createElement("li");
+          let timeStr = formatTime(score.time, 3);
+          li.innerHTML = `
+            <span class="rank-time">${index + 1}: ${timeStr}</span>
+            <span class="rank-name">${escapeHTML(score.name)}</span>
+            <span class="rank-date">${escapeHTML(score.date)}</span>
+          `;
+          rankingList.appendChild(li);
+        });
+      }
+      function escapeHTML(str) {
+        return str.replace(/[&<>"']/g, function(match) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
+        });
+      }
+      
     </script>
   </body>
 </html>
